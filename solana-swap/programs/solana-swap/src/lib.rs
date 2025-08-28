@@ -3,7 +3,7 @@ pub mod instructions;
 pub mod state;
 pub mod constants;
 pub use instructions::*;
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("A4xcEpdNUkcycpmMekrGE3jWKQket1fnsWhNVh5G5LG8");
 
  #[program] // FIX: Add the #[program] attribute to the mod
 pub mod solana_swap { // FIX: Wrap your instructions in a mod and `use super::*;`
