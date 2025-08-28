@@ -89,16 +89,24 @@ pub struct TakeOffer<'info>{
 pub fn send_wanted_tokens_to_maker<'info>(
     ctx: &Context<TakeOffer>,
 ) -> Result<()> {
+    // check expiration
+    let clock = Clock::get()?;
+    require!(
+        clock.unix_timestamp <= ctx.accounts.offer.expires_at,
+        CustomError::OfferExpired
+    );
+
     transfer_tokens(
-        &ctx.accounts.taker_token_account_b,        // from = taker pays with Token B
-        &ctx.accounts.maker_token_account_b,        // to = maker receives Token B
-        &ctx.accounts.taker,                        // authority = taker must sign
-        &ctx.accounts.token_mint_b,                 // mint of Token B
-        &ctx.accounts.token_program,                // token program
-        ctx.accounts.offer.token_b_wanted_amount,   // amount taker pays
-        ctx.accounts.token_mint_b.decimals,         // mint decimals
+        &ctx.accounts.taker_token_account_b,
+        &ctx.accounts.maker_token_account_b,
+        &ctx.accounts.taker,
+        &ctx.accounts.token_mint_b,
+        &ctx.accounts.token_program,
+        ctx.accounts.offer.token_b_wanted_amount,
+        ctx.accounts.token_mint_b.decimals,
     )
 }
+
 
 // Step 2: Withdraw Token A from vault to taker, then close vault ATA
 pub fn withdraw_and_close_vault(context: Context<TakeOffer>) -> Result<()> {
@@ -125,11 +133,12 @@ pub fn withdraw_and_close_vault(context: Context<TakeOffer>) -> Result<()> {
         &signer_seeds, // prove PDA is authority
     );
 
-    transfer_checked(
-        cpi_context,
-        context.accounts.vault.amount,        // transfer *all* vault tokens
-        context.accounts.token_mint_a.decimals,
-    )?;
+   transfer_checked(
+    cpi_context,
+    context.accounts.offer.token_a_offered_amount,  // transfer only agreed amount
+    context.accounts.token_mint_a.decimals,
+)?;
+
 
     // --- CloseAccount: close vault ATA and return rent lamports ---
     let accounts = CloseAccount {
@@ -147,4 +156,10 @@ pub fn withdraw_and_close_vault(context: Context<TakeOffer>) -> Result<()> {
     close_account(cpi_context); // vault closed, rent reclaimed
 
     Ok(())
+}
+
+#[error_code]
+pub enum CustomError {
+    #[msg("This offer has expired.")]
+    OfferExpired,
 }

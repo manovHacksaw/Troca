@@ -8,6 +8,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-pixel: "Press Start 2P", monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -37,86 +38,385 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+
+  /* 8-bit Color Palette */
+  --pixel-black: #000000;
+  --pixel-white: #ffffff;
+  --pixel-red: #ff0000;
+  --pixel-green: #00ff00;
+  --pixel-blue: #0000ff;
+  --pixel-yellow: #ffff00;
+  --pixel-cyan: #00ffff;
+  --pixel-magenta: #ff00ff;
+  --pixel-orange: #ff8000;
+  --pixel-purple: #8000ff;
+  --pixel-pink: #ff80ff;
+  --pixel-lime: #80ff00;
+  --pixel-dark-gray: #404040;
+  --pixel-gray: #808080;
+  --pixel-light-gray: #c0c0c0;
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --radius: 0px;
+  --background: var(--pixel-black);
+  --foreground: var(--pixel-white);
+  --card: var(--pixel-dark-gray);
+  --card-foreground: var(--pixel-white);
+  --popover: var(--pixel-dark-gray);
+  --popover-foreground: var(--pixel-white);
+  --primary: var(--pixel-blue);
+  --primary-foreground: var(--pixel-white);
+  --secondary: var(--pixel-gray);
+  --secondary-foreground: var(--pixel-white);
+  --muted: var(--pixel-dark-gray);
+  --muted-foreground: var(--pixel-light-gray);
+  --accent: var(--pixel-cyan);
+  --accent-foreground: var(--pixel-black);
+  --destructive: var(--pixel-red);
+  --border: var(--pixel-gray);
+  --input: var(--pixel-dark-gray);
+  --ring: var(--pixel-cyan);
+  --chart-1: var(--pixel-red);
+  --chart-2: var(--pixel-green);
+  --chart-3: var(--pixel-blue);
+  --chart-4: var(--pixel-yellow);
+  --chart-5: var(--pixel-magenta);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
   }
+
   body {
     @apply bg-background text-foreground;
+    font-family: "Press Start 2P", monospace;
+    background-image: radial-gradient(circle at 2px 2px, var(--pixel-dark-gray) 1px, transparent 0);
+    background-size: 20px 20px;
+  }
+}
+
+/* Using regular CSS without @apply to avoid circular dependencies */
+@layer components {
+  /* 8-bit Button Base Styles */
+  .pixel-btn {
+    padding: 1rem 1.5rem;
+    font-weight: bold;
+    border: 2px solid;
+    transition: all 75ms;
+    font-family: "Press Start 2P", monospace;
+    image-rendering: pixelated;
+    text-transform: uppercase;
+    box-shadow: 2px 2px 0 var(--pixel-dark-gray), 4px 4px 0 var(--pixel-black);
+    cursor: pointer;
+    display: inline-block;
+    text-decoration: none;
+  }
+
+  .pixel-btn:hover {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 var(--pixel-dark-gray), 2px 2px 0 var(--pixel-black);
+  }
+
+  .pixel-btn:active {
+    transform: translate(2px, 2px);
+    box-shadow: none;
+  }
+
+  .pixel-btn-primary {
+    background-color: #3b82f6;
+    color: white;
+    border-color: #1d4ed8;
+    padding: 1rem 1.5rem;
+    font-weight: bold;
+    border: 2px solid;
+    transition: all 75ms;
+    font-family: "Press Start 2P", monospace;
+    image-rendering: pixelated;
+    text-transform: uppercase;
+    box-shadow: 2px 2px 0 var(--pixel-dark-gray), 4px 4px 0 var(--pixel-black);
+    cursor: pointer;
+    display: inline-block;
+    text-decoration: none;
+  }
+
+  .pixel-btn-primary:hover {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 var(--pixel-dark-gray), 2px 2px 0 var(--pixel-black);
+  }
+
+  .pixel-btn-primary:active {
+    transform: translate(2px, 2px);
+    box-shadow: none;
+  }
+
+  .pixel-btn-secondary {
+    background-color: #6b7280;
+    color: white;
+    border-color: #374151;
+    padding: 1rem 1.5rem;
+    font-weight: bold;
+    border: 2px solid;
+    transition: all 75ms;
+    font-family: "Press Start 2P", monospace;
+    image-rendering: pixelated;
+    text-transform: uppercase;
+    box-shadow: 2px 2px 0 var(--pixel-dark-gray), 4px 4px 0 var(--pixel-black);
+    cursor: pointer;
+    display: inline-block;
+    text-decoration: none;
+  }
+
+  .pixel-btn-secondary:hover {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 var(--pixel-dark-gray), 2px 2px 0 var(--pixel-black);
+  }
+
+  .pixel-btn-secondary:active {
+    transform: translate(2px, 2px);
+    box-shadow: none;
+  }
+
+  .pixel-btn-success {
+    background-color: #10b981;
+    color: white;
+    border-color: #047857;
+    padding: 1rem 1.5rem;
+    font-weight: bold;
+    border: 2px solid;
+    transition: all 75ms;
+    font-family: "Press Start 2P", monospace;
+    image-rendering: pixelated;
+    text-transform: uppercase;
+    box-shadow: 2px 2px 0 var(--pixel-dark-gray), 4px 4px 0 var(--pixel-black);
+    cursor: pointer;
+    display: inline-block;
+    text-decoration: none;
+  }
+
+  .pixel-btn-success:hover {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 var(--pixel-dark-gray), 2px 2px 0 var(--pixel-black);
+  }
+
+  .pixel-btn-success:active {
+    transform: translate(2px, 2px);
+    box-shadow: none;
+  }
+
+  .pixel-btn-danger {
+    background-color: #ef4444;
+    color: white;
+    border-color: #dc2626;
+    padding: 1rem 1.5rem;
+    font-weight: bold;
+    border: 2px solid;
+    transition: all 75ms;
+    font-family: "Press Start 2P", monospace;
+    image-rendering: pixelated;
+    text-transform: uppercase;
+    box-shadow: 2px 2px 0 var(--pixel-dark-gray), 4px 4px 0 var(--pixel-black);
+    cursor: pointer;
+    display: inline-block;
+    text-decoration: none;
+  }
+
+  .pixel-btn-danger:hover {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 var(--pixel-dark-gray), 2px 2px 0 var(--pixel-black);
+  }
+
+  .pixel-btn-danger:active {
+    transform: translate(2px, 2px);
+    box-shadow: none;
+  }
+
+  .pixel-btn-warning {
+    background-color: #eab308;
+    color: black;
+    border-color: #ca8a04;
+    padding: 1rem 1.5rem;
+    font-weight: bold;
+    border: 2px solid;
+    transition: all 75ms;
+    font-family: "Press Start 2P", monospace;
+    image-rendering: pixelated;
+    text-transform: uppercase;
+    box-shadow: 2px 2px 0 var(--pixel-dark-gray), 4px 4px 0 var(--pixel-black);
+    cursor: pointer;
+    display: inline-block;
+    text-decoration: none;
+  }
+
+  .pixel-btn-warning:hover {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 var(--pixel-dark-gray), 2px 2px 0 var(--pixel-black);
+  }
+
+  .pixel-btn-warning:active {
+    transform: translate(2px, 2px);
+    box-shadow: none;
+  }
+
+  /* 8-bit Input Styles */
+  .pixel-input {
+    padding: 0.75rem 1rem;
+    border: 2px solid #9ca3af;
+    background-color: #f3f4f6;
+    color: black;
+    font-family: "Press Start 2P", monospace;
+    font-size: 10px;
+    image-rendering: pixelated;
+    box-shadow: inset 2px 2px 0 var(--pixel-dark-gray), inset -2px -2px 0 var(--pixel-white);
+  }
+
+  .pixel-input:focus {
+    outline: none;
+    border-color: #22d3ee;
+    box-shadow: inset 2px 2px 0 var(--pixel-dark-gray), inset -2px -2px 0 var(--pixel-cyan);
+  }
+
+  /* 8-bit Card Styles */
+  .pixel-card {
+    border: 2px solid #9ca3af;
+    background-color: #1f2937;
+    padding: 1rem;
+    box-shadow: 4px 4px 0 var(--pixel-dark-gray), 8px 8px 0 var(--pixel-black);
+    image-rendering: pixelated;
+  }
+
+  /* 8-bit Text Styles */
+  .pixel-title {
+    font-family: "Press Start 2P", monospace;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    text-align: center;
+    text-shadow: 2px 2px 0 var(--pixel-black);
+    letter-spacing: 2px;
+  }
+
+  .pixel-subtitle {
+    font-family: "Press Start 2P", monospace;
+    font-size: 1.125rem;
+    margin-bottom: 0.5rem;
+    text-shadow: 1px 1px 0 var(--pixel-black);
+  }
+
+  .pixel-text {
+    font-family: "Press Start 2P", monospace;
+    font-size: 10px;
+    line-height: 1.6;
+  }
+
+  /* Navigation Styles */
+  .pixel-nav {
+    border-bottom: 2px solid #9ca3af;
+    background-color: #111827;
+    padding: 1rem;
+    box-shadow: 0 4px 0 var(--pixel-dark-gray);
+  }
+
+  .pixel-nav-link {
+    padding: 0.5rem 0.75rem;
+    margin: 0 0.25rem;
+    border: 2px solid transparent;
+    transition: all 75ms;
+    font-family: "Press Start 2P", monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  .pixel-nav-link:hover {
+    border-color: #22d3ee;
+    background-color: #22d3ee;
+    color: black;
+    box-shadow: 2px 2px 0 var(--pixel-dark-gray);
+  }
+
+  .pixel-nav-link.active {
+    border-color: #eab308;
+    background-color: #eab308;
+    color: black;
+    box-shadow: 2px 2px 0 var(--pixel-dark-gray);
+  }
+
+  /* Loading Animation */
+  .pixel-loading {
+    display: inline-block;
+    animation: pixel-blink 1s infinite;
+  }
+
+  /* Retro Grid Background */
+  .retro-grid {
+    background-image: linear-gradient(var(--pixel-cyan) 1px, transparent 1px),
+      linear-gradient(90deg, var(--pixel-cyan) 1px, transparent 1px);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 0;
+    opacity: 0.1;
+  }
+
+  /* 8-bit Container */
+  .pixel-container {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+
+  /* Status Messages */
+  .pixel-status-success {
+    border: 2px solid #22c55e;
+    background-color: #166534;
+    color: #dcfce7;
+    padding: 1rem;
+    box-shadow: 4px 4px 0 var(--pixel-dark-gray), 8px 8px 0 var(--pixel-black);
+    image-rendering: pixelated;
+  }
+
+  .pixel-status-error {
+    border: 2px solid #f87171;
+    background-color: #991b1b;
+    color: #fecaca;
+    padding: 1rem;
+    box-shadow: 4px 4px 0 var(--pixel-dark-gray), 8px 8px 0 var(--pixel-black);
+    image-rendering: pixelated;
+  }
+
+  .pixel-status-warning {
+    border: 2px solid #facc15;
+    background-color: #a16207;
+    color: #fef3c7;
+    padding: 1rem;
+    box-shadow: 4px 4px 0 var(--pixel-dark-gray), 8px 8px 0 var(--pixel-black);
+    image-rendering: pixelated;
+  }
+
+  .pixel-status-info {
+    border: 2px solid #60a5fa;
+    background-color: #1e40af;
+    color: #dbeafe;
+    padding: 1rem;
+    box-shadow: 4px 4px 0 var(--pixel-dark-gray), 8px 8px 0 var(--pixel-black);
+    image-rendering: pixelated;
+  }
+}
+
+@keyframes pixel-blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
   }
 }

@@ -9,7 +9,7 @@ use crate::state::Offer;
 use super::transfer_tokens;
 
 #[derive(Accounts)]
-#[instruction(id: u64)]
+#[instruction(id: u64, token_a_offered_amount: u64, token_b_wanted_amount: u64, expires_at: i64)]
 pub struct MakeOffer<'info> {
     #[account(mut)]
     pub maker: Signer<'info>,
@@ -75,7 +75,9 @@ pub fn send_offered_tokens_to_vault<'info>(
 pub fn save_offer(
     context: Context<MakeOffer>,
     id: u64,
+    token_a_offered_amount: u64,
     token_b_wanted_amount: u64,
+    expires_at: i64,
 ) -> Result<()> {
     let offer = &mut context.accounts.offer;
 
@@ -84,7 +86,9 @@ pub fn save_offer(
         maker: context.accounts.maker.key(),
         token_mint_a: context.accounts.token_mint_a.key(),
         token_mint_b: context.accounts.token_mint_b.key(),
+        token_a_offered_amount,     // NEW
         token_b_wanted_amount,
+        expires_at,                 // NEW
         bump: context.bumps.offer,
     });
 
