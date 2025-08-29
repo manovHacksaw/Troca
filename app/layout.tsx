@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Token Swap - 8bit Trading Platform",
-  description: "Trade tokens on Solana with retro 8-bit style",
+  title: "Troca — Solana Token Studio",
+  description: "Mint tokens, trade offers, and manage your portfolio with a modern, subtly retro UI.",
 };
 
 export default function RootLayout({
