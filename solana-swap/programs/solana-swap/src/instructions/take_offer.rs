@@ -8,15 +8,16 @@ use anchor_spl::{
 };
 
 use crate::state::Offer;
+use crate::errors::SwapError;
 use super::transfer_tokens;
 
 #[derive(Accounts)]
-pub struct TakeOffer<'info>{
+pub struct TakeOffer<'info> {
     // User accepting the offer
     #[account(mut)]
     pub taker: Signer<'info>,
-    
-    // Maker (original offer creator) – doesn't sign here, just receives tokens
+
+    // Maker (original offer creator) – doesn’t sign, just receives tokens
     #[account(mut)]
     pub maker: SystemAccount<'info>,
 
@@ -26,8 +27,7 @@ pub struct TakeOffer<'info>{
     // Token B mint (the one maker wants in exchange)
     pub token_mint_b: InterfaceAccount<'info, Mint>,
 
-    // Taker’s associated token account for Token A
-    // - If missing, auto-created and funded by taker
+    // Taker’s ATA for Token A (they receive it)
     #[account(
         init_if_needed,
         payer = taker,
@@ -37,8 +37,7 @@ pub struct TakeOffer<'info>{
     )]
     pub taker_token_account_a: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    // Taker’s associated token account for Token B
-    // Must already exist (since taker is paying with this)
+    // Taker’s ATA for Token B (they pay with this) → must already exist
     #[account(
         mut,
         associated_token::mint = token_mint_b,
@@ -47,8 +46,7 @@ pub struct TakeOffer<'info>{
     )]
     pub taker_token_account_b: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    // Maker’s associated token account for Token B
-    // - If missing, auto-created and funded by taker
+    // Maker’s ATA for Token B (they receive it)
     #[account(
         init_if_needed,
         payer = taker,
@@ -58,42 +56,40 @@ pub struct TakeOffer<'info>{
     )]
     pub maker_token_account_b: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    // The offer PDA that holds metadata about the trade
+    // The offer PDA that holds trade metadata
     #[account(
         mut,
-        close = maker, // when offer is done, any lamports left go back to maker
+        close = maker, // send rent back to maker after close
         has_one = maker,
         has_one = token_mint_a,
         has_one = token_mint_b,
         seeds = [b"offer", maker.key().as_ref(), offer.id.to_le_bytes().as_ref()],
         bump = offer.bump
     )]
-    offer: Account<'info, Offer>,
+    pub offer: Account<'info, Offer>,
 
-    // The vault ATA holding the maker’s Token A
+    // Vault ATA holding maker’s Token A
     #[account(
         mut,
         associated_token::mint = token_mint_a,
         associated_token::authority = offer,
         associated_token::token_program = token_program,
     )]
-    vault: InterfaceAccount<'info, TokenAccount>,
+    pub vault: InterfaceAccount<'info, TokenAccount>,
 
-    // Standard programs required
+    // Standard programs
     pub system_program: Program<'info, System>,
     pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
-// Step 1: Transfer taker's Token B into maker's account
-pub fn send_wanted_tokens_to_maker<'info>(
-    ctx: &Context<TakeOffer>,
-) -> Result<()> {
-    // check expiration
+// Step 1: Transfer taker’s Token B into maker’s account
+pub fn send_wanted_tokens_to_maker(ctx: &Context<TakeOffer>) -> Result<()> {
+    // Check expiration
     let clock = Clock::get()?;
     require!(
         clock.unix_timestamp <= ctx.accounts.offer.expires_at,
-        CustomError::OfferExpired
+        SwapError::OfferExpired
     );
 
     transfer_tokens(
@@ -107,59 +103,48 @@ pub fn send_wanted_tokens_to_maker<'info>(
     )
 }
 
-
-// Step 2: Withdraw Token A from vault to taker, then close vault ATA
-pub fn withdraw_and_close_vault(context: Context<TakeOffer>) -> Result<()> {
-    // Seeds to re-derive the PDA (offer) so it can sign
+// Step 2: Withdraw Token A from vault to taker, then close vault
+pub fn withdraw_and_close_vault(ctx: Context<TakeOffer>) -> Result<()> {
     let seeds = &[
         b"offer",
-        context.accounts.maker.to_account_info().key.as_ref(),
-        &context.accounts.offer.id.to_le_bytes()[..],
-        &[context.accounts.offer.bump],
+        ctx.accounts.maker.to_account_info().key.as_ref(),
+        &ctx.accounts.offer.id.to_le_bytes()[..],
+        &[ctx.accounts.offer.bump],
     ];
-   let signer_seeds: &[&[&[u8]]] = &[seeds];
+    let signer_seeds: &[&[&[u8]]] = &[seeds];
 
-    // --- TransferChecked: vault -> taker (Token A) ---
-    let accounts = TransferChecked {
-        from: context.accounts.vault.to_account_info(),              // vault ATA (source)
-        to: context.accounts.taker_token_account_a.to_account_info(),// taker ATA (destination)
-        mint: context.accounts.token_mint_a.to_account_info(),       // token A mint
-        authority: context.accounts.offer.to_account_info(),         // PDA = offer
+    // --- Transfer Token A from vault → taker ---
+    let transfer_accounts = TransferChecked {
+        from: ctx.accounts.vault.to_account_info(),
+        to: ctx.accounts.taker_token_account_a.to_account_info(),
+        mint: ctx.accounts.token_mint_a.to_account_info(),
+        authority: ctx.accounts.offer.to_account_info(),
     };
 
-    let cpi_context = CpiContext::new_with_signer(
-        context.accounts.token_program.to_account_info(), // SPL Token program
-        accounts,
-        &signer_seeds, // prove PDA is authority
-    );
-
-   transfer_checked(
-    cpi_context,
-    context.accounts.offer.token_a_offered_amount,  // transfer only agreed amount
-    context.accounts.token_mint_a.decimals,
-)?;
-
-
-    // --- CloseAccount: close vault ATA and return rent lamports ---
-    let accounts = CloseAccount {
-        account: context.accounts.vault.to_account_info(),           // vault ATA
-        destination: context.accounts.taker.to_account_info(),       // taker receives rent lamports
-        authority: context.accounts.offer.to_account_info(),         // PDA signs
-    };
-
-    let cpi_context = CpiContext::new_with_signer(
-        context.accounts.token_program.to_account_info(),
-        accounts,
+    let transfer_ctx = CpiContext::new_with_signer(
+        ctx.accounts.token_program.to_account_info(),
+        transfer_accounts,
         &signer_seeds,
     );
 
-    close_account(cpi_context); // vault closed, rent reclaimed
+    transfer_checked(
+        transfer_ctx,
+        ctx.accounts.offer.token_a_offered_amount,
+        ctx.accounts.token_mint_a.decimals,
+    )?;
 
-    Ok(())
-}
+    // --- Close vault and return rent lamports ---
+    let close_accounts = CloseAccount {
+        account: ctx.accounts.vault.to_account_info(),
+        destination: ctx.accounts.maker.to_account_info(), // rent goes back to maker
+        authority: ctx.accounts.offer.to_account_info(),
+    };
 
-#[error_code]
-pub enum CustomError {
-    #[msg("This offer has expired.")]
-    OfferExpired,
+    let close_ctx = CpiContext::new_with_signer(
+        ctx.accounts.token_program.to_account_info(),
+        close_accounts,
+        &signer_seeds,
+    );
+
+    close_account(close_ctx)
 }

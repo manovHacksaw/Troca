@@ -26,6 +26,7 @@ export default function MakeOfferPage() {
     tokenMintB: "",
     tokenAOfferedAmount: "",
     tokenBWantedAmount: "",
+    expiryDate: "",
   });
   
   const [userTokens, setUserTokens] = useState<TokenBalance[]>([]);
@@ -101,6 +102,7 @@ export default function MakeOfferPage() {
     if (!form.tokenMintB.trim()) errors.push("TOKEN B REQUIRED");
     if (!form.tokenAOfferedAmount.trim()) errors.push("OFFER AMOUNT REQUIRED");
     if (!form.tokenBWantedAmount.trim()) errors.push("WANTED AMOUNT REQUIRED");
+    if (!form.expiryDate.trim()) errors.push("EXPIRY DATE REQUIRED");
 
     // Validate numeric fields
     const offerId = Number(form.id);
@@ -131,6 +133,19 @@ export default function MakeOfferPage() {
     // Check if tokens are different
     if (form.tokenMintA === form.tokenMintB) {
       errors.push("TOKENS MUST BE DIFFERENT");
+    }
+
+    // Validate expiry date
+    if (form.expiryDate) {
+      const expiryTime = new Date(form.expiryDate).getTime();
+      const currentTime = Date.now();
+      const oneHourFromNow = currentTime + (60 * 60 * 1000); // 1 hour in milliseconds
+
+      if (isNaN(expiryTime)) {
+        errors.push("INVALID EXPIRY DATE");
+      } else if (expiryTime < oneHourFromNow) {
+        errors.push("EXPIRY MUST BE AT LEAST 1 HOUR FROM NOW");
+      }
     }
 
     // Validate public keys
@@ -164,12 +179,16 @@ export default function MakeOfferPage() {
       setStatus("🔄 CREATING OFFER...");
       setStatusType("info");
 
+      // Convert expiry date to Unix timestamp (seconds)
+      const expiryTimestamp = Math.floor(new Date(form.expiryDate).getTime() / 1000);
+
       const signature = await makeOffer(
         Number(form.id),
         new PublicKey(form.tokenMintA),
         new PublicKey(form.tokenMintB),
         Number(form.tokenAOfferedAmount),
-        Number(form.tokenBWantedAmount)
+        Number(form.tokenBWantedAmount),
+        expiryTimestamp
       );
 
       setStatus(`✅ OFFER CREATED SUCCESSFULLY!
@@ -184,6 +203,7 @@ OFFER ID: ${form.id}`);
         tokenMintB: "",
         tokenAOfferedAmount: "",
         tokenBWantedAmount: "",
+        expiryDate: "",
       });
 
       // Refresh user tokens
@@ -333,6 +353,25 @@ OFFER ID: ${form.id}`);
                   />
                 </div>
 
+                {/* Expiry Date */}
+                <div>
+                  <label className="block pixel-text text-purple-200 mb-2">
+                    EXPIRY DATE & TIME:
+                  </label>
+                  <input
+                    type="datetime-local"
+                    name="expiryDate"
+                    value={form.expiryDate}
+                    onChange={handleChange}
+                    required
+                    className="pixel-input w-full"
+                    min={new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)} // 1 hour from now
+                  />
+                  <p className="pixel-text text-xs text-purple-300 mt-1">
+                    OFFER EXPIRES AT THIS DATE/TIME (MINIMUM 1 HOUR FROM NOW)
+                  </p>
+                </div>
+
                 <button
                   type="submit"
                   disabled={loading || validationErrors.length > 0}
@@ -426,6 +465,17 @@ OFFER ID: ${form.id}`);
                       {form.tokenBWantedAmount} TKN
                     </span>
                   </div>
+                  {form.expiryDate && (
+                    <div className="border-t border-yellow-600 pt-2 mt-2">
+                      <div className="flex justify-between">
+                        <span className="pixel-text text-yellow-200">EXPIRES:</span>
+                        <span className="pixel-text text-orange-400 text-xs">
+                          {new Date(form.expiryDate).toLocaleDateString()} <br />
+                          {new Date(form.expiryDate).toLocaleTimeString()}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

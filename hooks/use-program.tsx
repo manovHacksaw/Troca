@@ -5,10 +5,10 @@ import {SolanaSwap} from "../solana-swap/target/types/solana_swap";
 import * as anchor from "@coral-xyz/anchor";
 import { useAnchorWallet, useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useMemo } from "react";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, TOKEN_PROGRAM_ID, getMint, getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
 
 export function useProgram(){
-  const PROGRAM_ID = new PublicKey("A4xcEpdNUkcycpmMekrGE3jWKQket1fnsWhNVh5G5LG8");
+  const PROGRAM_ID = new PublicKey("CDnPGAFt6zbNXrYqkJW34BjAvqV2JJBY3UjiLWmQyd1R");
     const {connection} = useConnection();
     const {publicKey} = useWallet();
     const wallet = useAnchorWallet();
@@ -34,17 +34,30 @@ export function useProgram(){
 
   // make offer function
   const makeOffer = async(
-    id: number, 
+    id: number,
     tokenMintA: PublicKey,
     tokenMintB: PublicKey,
     offeredAmount: number,
     wantedAmount: number,
+    expiresAt: number,
   ) =>{
        if (!program || !publicKey) throw new Error("Wallet not connected");
 
+       // Fetch mint info to get token decimals
+       const mintAInfo = await getMint(connection, tokenMintA);
+       const mintBInfo = await getMint(connection, tokenMintB);
+
+       // Convert UI amounts to token amounts (multiply by 10^decimals)
+       const tokenAAmount = Math.floor(offeredAmount * Math.pow(10, mintAInfo.decimals));
+       const tokenBAmount = Math.floor(wantedAmount * Math.pow(10, mintBInfo.decimals));
+
+       console.log(`Converting amounts:
+         Token A (offered): ${offeredAmount} UI -> ${tokenAAmount} tokens (${mintAInfo.decimals} decimals)
+         Token B (wanted): ${wantedAmount} UI -> ${tokenBAmount} tokens (${mintBInfo.decimals} decimals)`);
+
        const [offerPda] = PublicKey.findProgramAddressSync(
         [Buffer.from("offer"), publicKey.toBuffer(),  new anchor.BN(id).toArrayLike(Buffer, "le", 8)], program.programId,
-       ) 
+       )
 
        const makerTokenAccountA = getAssociatedTokenAddress(
         tokenMintA, publicKey, false, TOKEN_PROGRAM_ID
@@ -57,7 +70,7 @@ export function useProgram(){
        console.log(program.programId.toBase58());
 
        const tx = await program.methods
-      .makeOffer(new anchor.BN(id), new anchor.BN(offeredAmount), new anchor.BN(wantedAmount))
+      .makeOffer(new anchor.BN(id), new anchor.BN(tokenAAmount), new anchor.BN(tokenBAmount), new anchor.BN(expiresAt))
       .accounts({
         maker: publicKey,
         tokenMintA,
@@ -76,54 +89,68 @@ export function useProgram(){
   };
 
   // take offer function
-  const takeOffer = async(offerId: number, maker: PublicKey) => {
-    if (!program || !publicKey) throw new Error("Wallet not connected");
+// take offer function
+const takeOffer = async (offerId: number, maker: PublicKey) => {
+  if (!program || !publicKey || !wallet) throw new Error("Wallet not connected");
 
-    const [offerPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("offer"), maker.toBuffer(), new anchor.BN(offerId).toArrayLike(Buffer, "le", 8)],
-      program.programId
-    );
+  const [offerPda] = PublicKey.findProgramAddressSync(
+    [Buffer.from("offer"), maker.toBuffer(), new anchor.BN(offerId).toArrayLike(Buffer, "le", 8)],
+    program.programId
+  );
 
-    // Fetch offer data to get token mints
-    const offerAccount = await program.account.offer.fetch(offerPda);
+  // Fetch offer data to get token mints
+  const offerAccount = await program.account.offer.fetch(offerPda);
 
-    const takerTokenAccountA = getAssociatedTokenAddress(
-      offerAccount.tokenMintA, publicKey, false, TOKEN_PROGRAM_ID
-    );
+  // The taker is RECEIVING token A.
+  // Use getOrCreate... to ensure their token account exists.
+ const takerTokenAccountA = await getAssociatedTokenAddress(
+  offerAccount.tokenMintA,
+  publicKey
+);
 
-    const takerTokenAccountB = getAssociatedTokenAddress(
-      offerAccount.tokenMintB, publicKey, false, TOKEN_PROGRAM_ID
-    );
 
-    const makerTokenAccountB = getAssociatedTokenAddress(
-      offerAccount.tokenMintB, maker, false, TOKEN_PROGRAM_ID
-    );
+  // The taker is SENDING token B.
+  // We just need the address. The transaction will fail if the account
+  // doesn't exist or has an insufficient balance, which is correct.
+  const takerTokenAccountB = await getAssociatedTokenAddress(
+    offerAccount.tokenMintB,
+    publicKey
+  );
 
-    const vault = getAssociatedTokenAddress(
-      offerAccount.tokenMintA, offerPda, true, TOKEN_PROGRAM_ID
-    );
+  // The original maker is RECEIVING token B.
+  // Use getOrCreate... to ensure their token account exists.
+  const makerTokenAccountB = await getAssociatedTokenAddress(
+  offerAccount.tokenMintB,
+  maker
+);
 
-    const tx = await program.methods
-      .takeOffer()
-      .accounts({
-        taker: publicKey,
-        maker: maker,
-        tokenMintA: offerAccount.tokenMintA,
-        tokenMintB: offerAccount.tokenMintB,
-        takerTokenAccountA,
-        takerTokenAccountB,
-        makerTokenAccountB,
-        offer: offerPda,
-        vault,
-        systemProgram: anchor.web3.SystemProgram.programId,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-      })
-      .rpc();
 
-    console.log("✅ takeOffer tx:", tx);
-    return tx;
-  };
+  const vault = await getAssociatedTokenAddress(
+    offerAccount.tokenMintA, offerPda, true
+  );
+
+  const tx = await program.methods
+    .takeOffer()
+    .accounts({
+      taker: publicKey,
+      maker: maker,
+      tokenMintA: offerAccount.tokenMintA,
+      tokenMintB: offerAccount.tokenMintB,
+      // Use the .address property from the created/fetched accounts
+      takerTokenAccountA: takerTokenAccountA.address,
+      takerTokenAccountB: takerTokenAccountB, // getAssociatedTokenAddress directly returns a PublicKey
+      makerTokenAccountB: makerTokenAccountB.address,
+      offer: offerPda,
+      vault,
+      systemProgram: anchor.web3.SystemProgram.programId,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+    })
+    .rpc();
+
+  console.log("✅ takeOffer tx:", tx);
+  return tx;
+};
 
   // fetch all offers
 const fetchOffers = async () => {
@@ -133,22 +160,58 @@ const fetchOffers = async () => {
     const offers = await program.account.offer.all();
     console.log("raw offers", offers);
 
-    offers.map((offer) => {
-      console.log("ID/PDA", offer.publicKey.toBase58());
-      console.log("Maker: ", offer.account.maker.toBase58());
-      console.log("Token B Wanted Amount: ", offer.account.tokenBWantedAmount.toNumber());
-      console.log(" Offered Token (A): ", offer.account.tokenMintA.toBase58());
-      console.log(" Wanted Token (B): ", offer.account.tokenMintB.toBase58());
-    })
+    // Process offers and convert amounts to UI format
+    const parsed = await Promise.all(offers.map(async (offer) => {
+      try {
+        // Fetch mint info to get decimals for conversion
+        const mintAInfo = await getMint(connection, offer.account.tokenMintA);
+        const mintBInfo = await getMint(connection, offer.account.tokenMintB);
 
-    const parsed = offers.map((offer) => ({
-      publicKey: offer.publicKey.toBase58(),
-      maker: offer.account.maker.toBase58(),
-      tokenMintA: offer.account.tokenMintA.toBase58(),
-      tokenMintB: offer.account.tokenMintB.toBase58(),
-      offeredAmount: offer.account.offeredAmount.toNumber(),
-      wantedAmount: offer.account.wantedAmount.toNumber(),
-      isActive: offer.account.isActive, // if you have a flag
+        // Convert token amounts back to UI amounts (divide by 10^decimals)
+        const offeredAmountInDecimals = offer.account.tokenAOfferedAmount.toNumber() / Math.pow(10, mintAInfo.decimals);
+        const wantedAmountInDecimals = offer.account.tokenBWantedAmount.toNumber() / Math.pow(10, mintBInfo.decimals);
+
+        console.log("ID/PDA", offer.publicKey.toBase58());
+        console.log("Maker: ", offer.account.maker.toBase58());
+        console.log("Offered Token (A): ", offer.account.tokenMintA.toBase58());
+        console.log("Wanted Token (B): ", offer.account.tokenMintB.toBase58());
+        console.log(`Token A Offered Amount: ${offer.account.tokenAOfferedAmount.toNumber()} lamports -> ${offeredAmountInDecimals} (${mintAInfo.decimals} decimals)`);
+        console.log(`Token B Wanted Amount: ${offer.account.tokenBWantedAmount.toNumber()} lamports -> ${wantedAmountInDecimals} (${mintBInfo.decimals} decimals)`);
+        console.log("Expires At: ", new Date(offer.account.expiresAt.toNumber() * 1000).toISOString());
+
+        return {
+          publicKey: offer.publicKey.toBase58(),
+          maker: offer.account.maker.toBase58(),
+          tokenMintA: offer.account.tokenMintA.toBase58(),
+          tokenMintB: offer.account.tokenMintB.toBase58(),
+          offeredAmount: offeredAmountInDecimals,
+          wantedAmount: wantedAmountInDecimals,
+          expiresAt: offer.account.expiresAt.toNumber(),
+          id: offer.account.id.toNumber(),
+          // Additional info for debugging
+          tokenADecimals: mintAInfo.decimals,
+          tokenBDecimals: mintBInfo.decimals,
+          rawOfferedAmount: offer.account.tokenAOfferedAmount.toNumber(),
+          rawWantedAmount: offer.account.tokenBWantedAmount.toNumber(),
+        };
+      } catch (error) {
+        console.error("Error processing offer:", error);
+        // Return raw values if conversion fails
+        return {
+          publicKey: offer.publicKey.toBase58(),
+          maker: offer.account.maker.toBase58(),
+          tokenMintA: offer.account.tokenMintA.toBase58(),
+          tokenMintB: offer.account.tokenMintB.toBase58(),
+          offeredAmount: offer.account.tokenAOfferedAmount.toNumber(),
+          wantedAmount: offer.account.tokenBWantedAmount.toNumber(),
+          expiresAt: offer.account.expiresAt.toNumber(),
+          id: offer.account.id.toNumber(),
+          tokenADecimals: 0,
+          tokenBDecimals: 0,
+          rawOfferedAmount: offer.account.tokenAOfferedAmount.toNumber(),
+          rawWantedAmount: offer.account.tokenBWantedAmount.toNumber(),
+        };
+      }
     }));
 
     console.log("✅ Offers fetched:", parsed);
@@ -158,6 +221,7 @@ const fetchOffers = async () => {
     return [];
   }
 };
+
 
   return { program, makeOffer, takeOffer, fetchOffers };
 }

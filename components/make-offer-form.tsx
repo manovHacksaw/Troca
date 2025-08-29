@@ -6,8 +6,9 @@ interface MakeOfferFormProps {
     id: number;
     tokenMintA: string;
     tokenMintB: string;
-    tokenAOfferedAmount: number;
-    tokenBWantedAmount: number;
+    tokenAOfferedAmount: number; // UI amount (e.g., 1.5 tokens)
+    tokenBWantedAmount: number;  // UI amount (e.g., 2.0 tokens)
+    expiresAt: number;
   }) => void;
 }
 
@@ -17,15 +18,20 @@ const MakeOfferForm: React.FC<MakeOfferFormProps> = ({ onSubmit }) => {
   const [tokenMintB, setTokenMintB] = useState("");
   const [tokenAOfferedAmount, setTokenAOfferedAmount] = useState("");
   const [tokenBWantedAmount, setTokenBWantedAmount] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Convert expiry date to Unix timestamp (seconds)
+    const expiryTimestamp = Math.floor(new Date(expiryDate).getTime() / 1000);
+
     onSubmit({
       id: Number(id),
       tokenMintA,
       tokenMintB,
       tokenAOfferedAmount: Number(tokenAOfferedAmount),
       tokenBWantedAmount: Number(tokenBWantedAmount),
+      expiresAt: expiryTimestamp,
     });
   };
 
@@ -75,6 +81,15 @@ const MakeOfferForm: React.FC<MakeOfferFormProps> = ({ onSubmit }) => {
         value={tokenBWantedAmount}
         onChange={(e) => setTokenBWantedAmount(e.target.value)}
         className="p-2 border rounded"
+        required
+      />
+
+      <input
+        type="datetime-local"
+        value={expiryDate}
+        onChange={(e) => setExpiryDate(e.target.value)}
+        className="p-2 border rounded"
+        min={new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)} // 1 hour from now
         required
       />
 

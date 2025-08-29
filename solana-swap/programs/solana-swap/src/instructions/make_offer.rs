@@ -6,6 +6,7 @@ use anchor_spl::{
 
 use crate::constants::ANCHOR_DISCRIMINATOR;
 use crate::state::Offer;
+use crate::errors::SwapError;
 use super::transfer_tokens;
 
 #[derive(Accounts)]
@@ -79,6 +80,14 @@ pub fn save_offer(
     token_b_wanted_amount: u64,
     expires_at: i64,
 ) -> Result<()> {
+    // Validate that amounts are greater than 0
+    require!(token_a_offered_amount > 0 && token_b_wanted_amount > 0, SwapError::InvalidAmounts);
+
+    // Validate expiry time (minimum 1 hour from now)
+    let clock = Clock::get()?;
+    let minimum_expiry = clock.unix_timestamp + 3600; // 1 hour = 3600 seconds
+    require!(expires_at >= minimum_expiry, SwapError::ExpiryTooSoon);
+
     let offer = &mut context.accounts.offer;
 
     offer.set_inner(Offer {
@@ -86,9 +95,9 @@ pub fn save_offer(
         maker: context.accounts.maker.key(),
         token_mint_a: context.accounts.token_mint_a.key(),
         token_mint_b: context.accounts.token_mint_b.key(),
-        token_a_offered_amount,     // NEW
+        token_a_offered_amount,
         token_b_wanted_amount,
-        expires_at,                 // NEW
+        expires_at,
         bump: context.bumps.offer,
     });
 
