@@ -5,6 +5,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import FileUpload, { FileUploadResult } from "@/components/aceternity/file-upload";
 import MultiStep, { Step } from "@/components/aceternity/multi-step-loader";
 import Loader from "@/components/aceternity/loader";
+import { Button } from "@/components/ui/button";
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import {
   createFungible,
@@ -50,9 +51,9 @@ export default function MintPage() {
 
   const resetSteps = () =>
     setSteps([
+      { label: "Upload Metadata", status: "pending" },
       { label: "Create Mint", status: "pending" },
       { label: "Mint to Wallet", status: "pending" },
-      { label: "Upload Metadata (IPFS)", status: "pending" },
     ]);
 
   const setStep = (i: number, status: Step["status"]) =>
@@ -124,6 +125,7 @@ export default function MintPage() {
       const createFungibleIx = createFungible(umi, {
         mint: mintSigner,
         name: form.name,
+        symbol: form.symbol.toUpperCase(),
         uri: metadataUri,
         sellerFeeBasisPoints: percentAmount(0),
         decimals,
@@ -177,121 +179,111 @@ export default function MintPage() {
   };
 
   return (
-    <div className="bg-gradient-to-b from-black via-[#0a0a12] to-black">
-      <div className="pixel-container py-10">
-        <div className="mx-auto max-w-2xl">
-          <div className="text-center">
-            <h1 className="bg-gradient-to-r from-cyan-400 to-fuchsia-400 bg-clip-text text-3xl font-extrabold text-transparent sm:text-4xl">
-              Mint SPL Token
-            </h1>
-            <p className="mt-2 text-sm text-white/70">Set name, symbol, decimals, supply, and icon.</p>
+    <div className="max-w-6xl mx-auto px-6 py-12">
+      <div className="text-center mb-8">
+        <h1 className="text-3xl md:text-4xl font-semibold text-white">Mint SPL Token</h1>
+        <p className="mt-2 text-sm text-zinc-400">Set name, symbol, decimals, supply, and icon.</p>
+      </div>
+
+      <div className="rounded-xl border border-[var(--border)] bg-[#111213] p-6">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5">
+          <div>
+            <label className="text-xs font-medium text-zinc-400">Token Name</label>
+            <input
+              type="text"
+              name="name"
+              value={form.name}
+              onChange={handleChange}
+              placeholder="My Token"
+              maxLength={32}
+              required
+              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[#0F0F0F] px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-[#1E90FF]/30 focus:border-[#1E90FF]"
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+            <div>
+              <label className="text-xs font-medium text-zinc-400">Symbol</label>
+              <input
+                type="text"
+                name="symbol"
+                value={form.symbol}
+                onChange={handleChange}
+                placeholder="TKN"
+                maxLength={10}
+                required
+                className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[#0F0F0F] px-3 py-2 text-sm uppercase text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-[#1E90FF]/30 focus:border-[#1E90FF]"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-zinc-400">Decimals</label>
+              <input
+                type="number"
+                name="decimals"
+                value={form.decimals}
+                onChange={handleChange}
+                min={0}
+                max={9}
+                required
+                className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[#0F0F0F] px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#1E90FF]/30 focus:border-[#1E90FF]"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-zinc-400">Initial Supply</label>
+              <input
+                type="number"
+                name="supply"
+                value={form.supply}
+                onChange={handleChange}
+                placeholder="1000000"
+                min={1}
+                required
+                className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[#0F0F0F] px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#1E90FF]/30 focus:border-[#1E90FF]"
+              />
+            </div>
           </div>
 
-          <div className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_40px_120px_-60px_rgba(59,130,246,0.35)]">
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5">
-              <div>
-                <label className="text-xs font-semibold text-white/70">Token Name</label>
-                <input
-                  type="text"
-                  name="name"
-                  value={form.name}
-                  onChange={handleChange}
-                  placeholder="My Token"
-                  maxLength={32}
-                  required
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-white/40"
-                />
-              </div>
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-                <div>
-                  <label className="text-xs font-semibold text-white/70">Symbol</label>
-                  <input
-                    type="text"
-                    name="symbol"
-                    value={form.symbol}
-                    onChange={handleChange}
-                    placeholder="TKN"
-                    maxLength={10}
-                    required
-                    className="mt-1 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm uppercase text-white placeholder:text-white/40"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-white/70">Decimals</label>
-                  <input
-                    type="number"
-                    name="decimals"
-                    value={form.decimals}
-                    onChange={handleChange}
-                    min={0}
-                    max={9}
-                    required
-                    className="mt-1 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-white/70">Initial Supply</label>
-                  <input
-                    type="number"
-                    name="supply"
-                    value={form.supply}
-                    onChange={handleChange}
-                    placeholder="1000000"
-                    min={1}
-                    required
-                    className="mt-1 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-white/70">Token Icon (IPFS)</label>
-                <FileUpload onUploaded={onIconUploaded} />
-                {form.iconUrl ? (
-                  <p className="mt-2 truncate text-xs text-emerald-300">{form.iconUrl}</p>
-                ) : (
-                  <p className="mt-2 text-xs text-white/50">Optional, improves metadata and UX</p>
-                )}
-              </div>
-
-              <button
-                type="submit"
-                disabled={busy || !wallet.connected}
-                className="rounded-2xl bg-gradient-to-r from-cyan-500 to-fuchsia-500 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
-              >
-                {busy ? <Loader label="Minting..." /> : wallet.connected ? "Mint Token" : "Connect Wallet"}
-              </button>
-            </form>
-
-            <div className="mt-6">
-              <MultiStep steps={steps} />
-            </div>
-
-            {message && (
-              <div
-                className={`mt-6 rounded-2xl border p-4 text-sm ${
-                  messageType === "success"
-                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
-                    : messageType === "error"
-                    ? "border-rose-500/30 bg-rose-500/10 text-rose-200"
-                    : messageType === "warning"
-                    ? "border-amber-500/30 bg-amber-500/10 text-amber-200"
-                    : "border-cyan-500/30 bg-cyan-500/10 text-cyan-200"
-                }`}
-              >
-                <pre className="whitespace-pre-wrap break-words">{message}</pre>
-              </div>
+          <div>
+            <label className="text-xs font-medium text-zinc-400">Token Icon (IPFS)</label>
+            <FileUpload onUploaded={onIconUploaded} />
+            {form.iconUrl ? (
+              <p className="mt-2 truncate text-xs text-emerald-300">{form.iconUrl}</p>
+            ) : (
+              <p className="mt-2 text-xs text-zinc-500">Optional, improves metadata and UX</p>
             )}
           </div>
 
-          <div className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-              <Stat label="Network" value="Solana Devnet" />
-              <Stat label="Standard" value="SPL Token" />
-              <Stat label="Est. Cost" value="~0.002 SOL" />
-              <Stat label="Time" value="~5s" />
-            </div>
+          <Button type="submit" disabled={busy || !wallet.connected} className="w-full sm:w-auto">
+            {busy ? <Loader label="Minting..." /> : wallet.connected ? "Mint Token" : "Connect Wallet"}
+          </Button>
+        </form>
+
+        <div className="mt-6">
+          <MultiStep steps={steps} />
+        </div>
+
+        {message && (
+          <div
+            className={`mt-6 rounded-lg border p-4 text-sm ${
+              messageType === "success"
+                ? "border-emerald-700/40 bg-emerald-900/20 text-emerald-200"
+                : messageType === "error"
+                ? "border-rose-700/40 bg-rose-900/20 text-rose-200"
+                : messageType === "warning"
+                ? "border-amber-700/40 bg-amber-900/20 text-amber-200"
+                : "border-cyan-700/40 bg-cyan-900/20 text-cyan-200"
+            }`}
+          >
+            <pre className="whitespace-pre-wrap break-words">{message}</pre>
           </div>
+        )}
+      </div>
+
+      <div className="mt-8 rounded-xl border border-[var(--border)] bg-[#111213] p-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+          <Stat label="Network" value="Solana Devnet" />
+          <Stat label="Standard" value="SPL Token" />
+          <Stat label="Est. Cost" value="~0.002 SOL" />
+          <Stat label="Time" value="~5s" />
         </div>
       </div>
     </div>
@@ -300,8 +292,8 @@ export default function MintPage() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-black/30 p-4">
-      <div className="text-xs font-medium text-white/60">{label}</div>
+    <div className="rounded-lg border border-[var(--border)] bg-[#0F0F0F] p-4">
+      <div className="text-xs font-medium text-zinc-400">{label}</div>
       <div className="mt-1 text-sm font-semibold text-white">{value}</div>
     </div>
   );

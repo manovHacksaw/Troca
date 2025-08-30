@@ -6,26 +6,21 @@ export function Loader({ label = "Loading...", className = "" }: { label?: strin
   return (
     <div className={`flex items-center justify-center gap-3 ${className}`}>
       <motion.div
-        className="size-4 rounded-full bg-gradient-to-tr from-cyan-400 to-fuchsia-500 shadow-[0_0_12px_rgba(56,189,248,0.6)]"
-        animate={{ scale: [1, 1.2, 1] }}
-        transition={{ repeat: Infinity, duration: 0.8 }}
-        style={{ imageRendering: "pixelated" }}
+        className="size-2.5 rounded-full bg-[var(--primary)]"
+        animate={{ opacity: [0.5, 1, 0.5] }}
+        transition={{ repeat: Infinity, duration: 1 }}
       />
       <motion.div
-        className="size-4 rounded-full bg-gradient-to-tr from-fuchsia-500 to-purple-500 shadow-[0_0_12px_rgba(168,85,247,0.6)]"
-        animate={{ scale: [1, 1.2, 1] }}
-        transition={{ repeat: Infinity, duration: 0.8, delay: 0.15 }}
-        style={{ imageRendering: "pixelated" }}
+        className="size-2.5 rounded-full bg-zinc-500"
+        animate={{ opacity: [0.5, 1, 0.5] }}
+        transition={{ repeat: Infinity, duration: 1, delay: 0.15 }}
       />
       <motion.div
-        className="size-4 rounded-full bg-gradient-to-tr from-purple-500 to-cyan-400 shadow-[0_0_12px_rgba(192,132,252,0.6)]"
-        animate={{ scale: [1, 1.2, 1] }}
-        transition={{ repeat: Infinity, duration: 0.8, delay: 0.3 }}
-        style={{ imageRendering: "pixelated" }}
+        className="size-2.5 rounded-full bg-zinc-600"
+        animate={{ opacity: [0.5, 1, 0.5] }}
+        transition={{ repeat: Infinity, duration: 1, delay: 0.3 }}
       />
-      <span className="text-sm font-medium text-foreground/80 tracking-wide">
-        {label}
-      </span>
+      <span className="text-sm font-medium text-zinc-300 tracking-wide">{label}</span>
     </div>
   );
 }

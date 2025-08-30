@@ -105,8 +105,8 @@ export function FileUpload({
         }}
         onDragLeave={() => setDragOver(false)}
         onDrop={onDrop}
-        className={`relative grid place-items-center gap-3 rounded-2xl border border-white/10 p-6 text-center ${
-          dragOver ? "bg-white/10" : "bg-white/5"
+        className={`relative grid place-items-center gap-3 rounded-xl border border-[var(--border)] p-6 text-center ${
+          dragOver ? "bg-[#111213]" : "bg-[#0F0F0F]"
         }`}
       >
         <input
@@ -120,23 +120,23 @@ export function FileUpload({
           <img
             src={preview}
             alt="preview"
-            className="size-20 rounded-xl object-cover shadow-[0_0_20px_rgba(56,189,248,0.35)]"
+            className="size-20 rounded-lg object-cover"
             style={{ imageRendering: "pixelated" }}
           />
         ) : (
-          <div className="size-20 rounded-xl bg-gradient-to-tr from-cyan-500/20 to-purple-500/20 grid place-items-center text-2xl">
+          <div className="size-20 rounded-lg bg-[#111213] grid place-items-center text-2xl border border-[var(--border)] text-zinc-500">
             🖼️
           </div>
         )}
         <div className="space-y-1">
-          <div className="text-sm font-semibold text-white/90">{label}</div>
-          <div className="text-xs text-white/60">PNG, JPG, GIF up to 5MB</div>
+          <div className="text-sm font-medium text-white">{label}</div>
+          <div className="text-xs text-zinc-400">PNG, JPG, GIF up to 5MB</div>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-2">
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            className="rounded-xl bg-gradient-to-r from-cyan-500 to-fuchsia-500 px-3 py-1.5 text-xs font-semibold text-white shadow-[0_6px_20px_-6px_rgba(217,70,239,0.5)]"
+            className="rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] px-3 py-1.5 text-xs font-medium hover:opacity-90"
           >
             Choose File
           </button>
@@ -144,14 +144,14 @@ export function FileUpload({
             type="button"
             onClick={upload}
             disabled={!file || uploading}
-            className="rounded-xl bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/90 disabled:opacity-50"
+            className="rounded-md border border-[var(--border)] bg-[#0F0F0F] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
           >
             {uploading ? "Uploading..." : "Upload to IPFS"}
           </button>
         </div>
         {uploading && (
           <motion.div
-            className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-cyan-400/10 to-fuchsia-500/10"
+            className="absolute inset-0 rounded-xl bg-white/5"
             initial={{ opacity: 0 }}
             animate={{ opacity: [0, 1, 0] }}
             transition={{ repeat: Infinity, duration: 1.2 }}
@@ -160,7 +160,7 @@ export function FileUpload({
       </div>
 
       {error && (
-        <div className="rounded-xl border border-yellow-400/30 bg-yellow-500/10 p-3 text-xs text-yellow-200">
+        <div className="rounded-md border border-amber-700/40 bg-amber-900/20 p-3 text-xs text-amber-200">
           {error} – Ensure NEXT_PUBLIC_PINATA_JWT is set. Alternatively, paste an image URL below.
         </div>
       )}
@@ -170,12 +170,12 @@ export function FileUpload({
           placeholder="https://... (image URL)"
           value={manualUrl}
           onChange={(e) => setManualUrl(e.target.value)}
-          className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/40"
+          className="flex-1 rounded-md border border-[var(--border)] bg-[#0F0F0F] px-3 py-2 text-sm text-white placeholder:text-zinc-500"
         />
         <button
           type="button"
           onClick={commitManualUrl}
-          className="rounded-xl bg-gradient-to-r from-purple-600 to-cyan-500 px-3 py-2 text-xs font-semibold text-white"
+          className="rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] px-3 py-2 text-xs font-medium hover:opacity-90"
         >
           Use URL
         </button>

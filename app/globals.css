@@ -127,6 +127,17 @@ html {
     background-size: 20px 20px;
   }
 }
+.wallet-adapter-button {
+  background-color: #14f195;
+  border-radius: 0.5rem;
+  height: 2rem;
+  font-size: 0.75rem;
+}
+
+.wallet-adapter-button:hover {
+  background-color: #0ecf87;
+}
+
 
 /* Using regular CSS without @apply to avoid circular dependencies */
 @layer components {

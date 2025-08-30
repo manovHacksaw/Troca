@@ -23,7 +23,7 @@ const steps = [
 
 export default function HowItWorks() {
   return (
-    <section className="py-24 bg-white">
+    <section className="py-24 bg-[#0A0A0A]">
       <div className="max-w-6xl mx-auto px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -32,10 +32,10 @@ export default function HowItWorks() {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+          <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
             How It Works
           </h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <p className="text-xl text-zinc-400 max-w-2xl mx-auto">
             Three simple steps to start trading tokens on Solana
           </p>
         </motion.div>
@@ -50,24 +50,24 @@ export default function HowItWorks() {
               viewport={{ once: true }}
               className="group relative"
             >
-              <div className="bg-gray-50 rounded-2xl p-8 h-full border border-gray-200 hover:border-[#14F195] transition-all duration-300 hover:shadow-lg">
+              <div className="rounded-2xl p-8 h-full border border-[var(--border)] bg-[#111213] hover:border-[#14F195] transition-all duration-300">
                 <div className="flex flex-col items-center text-center space-y-4">
                   <div className="w-16 h-16 bg-[#14F195] rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                     <step.icon className="w-8 h-8 text-black" />
                   </div>
                   
-                  <h3 className="text-2xl font-bold text-gray-900">
+                  <h3 className="text-2xl font-bold text-white">
                     {step.title}
                   </h3>
                   
-                  <p className="text-gray-600 leading-relaxed">
+                  <p className="text-zinc-400 leading-relaxed">
                     {step.description}
                   </p>
                 </div>
               </div>
 
               {/* Step Number */}
-              <div className="absolute -top-4 -left-4 w-8 h-8 bg-black text-white rounded-full flex items-center justify-center font-bold text-sm">
+              <div className="absolute -top-4 -left-4 w-8 h-8 bg-white/10 text-white rounded-full flex items-center justify-center font-bold text-sm">
                 {index + 1}
               </div>
             </motion.div>

@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, {useState, useEffect } from "react";
 import { useProgram } from "@/hooks/use-program";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Metaplex } from "@metaplex-foundation/js";
 
 interface TokenBalance {
   mint: string;
@@ -12,6 +14,12 @@ interface TokenBalance {
   decimals: number;
   symbol?: string;
   name?: string;
+}
+
+// Interface for the fetched metadata of the token the user wants
+interface TokenBInfo {
+  symbol: string;
+  name: string;
 }
 
 export default function MakeOfferPage() {
@@ -34,12 +42,60 @@ export default function MakeOfferPage() {
   const [status, setStatus] = useState<string | null>(null);
   const [statusType, setStatusType] = useState<"success" | "error" | "warning" | "info">("info");
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  
+  // New state for fetching metadata for the "wanted" token (Token B)
+  const [tokenBInfo, setTokenBInfo] = useState<TokenBInfo | null>(null);
+  const [isFetchingTokenB, setIsFetchingTokenB] = useState(false);
 
   useEffect(() => {
     if (connected && publicKey) {
       fetchUserTokens();
     }
   }, [connected, publicKey, connection]);
+
+  // ✨ NEW: useEffect to fetch metadata for token B when its mint address is entered
+  useEffect(() => {
+    const fetchTokenBMetadata = async (mint: string) => {
+      if (!connection) return;
+      try {
+        new PublicKey(mint); // First, check if the string is a valid public key format
+        setIsFetchingTokenB(true);
+        setTokenBInfo(null);
+
+        const mx = Metaplex.make(connection);
+        const tokenMeta = await mx.nfts().findByMint({ mintAddress: new PublicKey(mint) });
+
+        if (tokenMeta && tokenMeta.symbol) {
+          setTokenBInfo({ symbol: tokenMeta.symbol, name: tokenMeta.name });
+        } else {
+           // Fallback for well-known tokens if Metaplex fails
+           const symbol = getTokenSymbol(mint);
+           if (!symbol.startsWith("TKN_")) {
+                setTokenBInfo({ symbol, name: getTokenName(mint) });
+           } else {
+                setTokenBInfo(null);
+           }
+        }
+      } catch (error) {
+        console.error("Could not fetch token B metadata:", error);
+        setTokenBInfo(null);
+      } finally {
+        setIsFetchingTokenB(false);
+      }
+    };
+
+    // Basic validation and debouncing to avoid excessive API calls
+    if (form.tokenMintB.trim().length >= 32 && form.tokenMintB.trim().length <= 44) {
+      const handler = setTimeout(() => {
+        fetchTokenBMetadata(form.tokenMintB.trim());
+      }, 500); // 500ms debounce
+
+      return () => clearTimeout(handler);
+    } else {
+      setTokenBInfo(null); // Clear info if input is invalid or empty
+    }
+  }, [form.tokenMintB, connection]);
+
 
   const fetchUserTokens = async () => {
     if (!publicKey) return;
@@ -70,20 +126,20 @@ export default function MakeOfferPage() {
 
   const getTokenSymbol = (mint: string): string => {
     const knownTokens: { [key: string]: string } = {
-      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": "USDC",
-      "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB": "USDT",
-      "So11111111111111111111111111111111111111112": "SOL",
-      "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So": "mSOL"
+      EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v: "USDC",
+      Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB: "USDT",
+      So11111111111111111111111111111111111111112: "SOL",
+      mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So: "mSOL"
     };
     return knownTokens[mint] || `TKN_${mint.slice(0, 4)}`;
   };
 
   const getTokenName = (mint: string): string => {
     const knownTokens: { [key: string]: string } = {
-      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": "USD Coin",
-      "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB": "Tether USD",
-      "So11111111111111111111111111111111111111112": "Wrapped SOL",
-      "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So": "Marinade SOL"
+      EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v: "USD Coin",
+      Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB: "Tether USD",
+      So11111111111111111111111111111111111111112: "Wrapped SOL",
+      mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So: "Marinade SOL"
     };
     return knownTokens[mint] || `Custom Token`;
   };
@@ -91,69 +147,39 @@ export default function MakeOfferPage() {
   const validateForm = (): boolean => {
     const errors: string[] = [];
 
-    // Check if wallet is connected
-    if (!connected) {
-      errors.push("WALLET NOT CONNECTED");
-    }
+    if (!connected) errors.push("Wallet not connected");
+    if (!form.id.trim()) errors.push("Offer ID required");
+    if (!form.tokenMintA.trim()) errors.push("Token A required");
+    if (!form.tokenMintB.trim()) errors.push("Token B required");
+    if (!form.tokenAOfferedAmount.trim()) errors.push("Offer amount required");
+    if (!form.tokenBWantedAmount.trim()) errors.push("Wanted amount required");
+    if (!form.expiryDate.trim()) errors.push("Expiry date required");
 
-    // Check required fields
-    if (!form.id.trim()) errors.push("OFFER ID REQUIRED");
-    if (!form.tokenMintA.trim()) errors.push("TOKEN A REQUIRED");
-    if (!form.tokenMintB.trim()) errors.push("TOKEN B REQUIRED");
-    if (!form.tokenAOfferedAmount.trim()) errors.push("OFFER AMOUNT REQUIRED");
-    if (!form.tokenBWantedAmount.trim()) errors.push("WANTED AMOUNT REQUIRED");
-    if (!form.expiryDate.trim()) errors.push("EXPIRY DATE REQUIRED");
-
-    // Validate numeric fields
     const offerId = Number(form.id);
     const offeredAmount = Number(form.tokenAOfferedAmount);
     const wantedAmount = Number(form.tokenBWantedAmount);
 
-    if (isNaN(offerId) || offerId <= 0) {
-      errors.push("INVALID OFFER ID");
-    }
-    if (isNaN(offeredAmount) || offeredAmount <= 0) {
-      errors.push("INVALID OFFER AMOUNT");
-    }
-    if (isNaN(wantedAmount) || wantedAmount <= 0) {
-      errors.push("INVALID WANTED AMOUNT");
-    }
+    if (isNaN(offerId) || offerId <= 0) errors.push("Invalid Offer ID");
+    if (isNaN(offeredAmount) || offeredAmount <= 0) errors.push("Invalid offer amount");
+    if (isNaN(wantedAmount) || wantedAmount <= 0) errors.push("Invalid wanted amount");
 
-    // Check if user owns token A
-    const tokenA = userTokens.find(t => t.mint === form.tokenMintA);
-    if (form.tokenMintA && !tokenA) {
-      errors.push("YOU DON'T OWN TOKEN A");
-    }
+    const tokenA = userTokens.find((t) => t.mint === form.tokenMintA);
+    if (form.tokenMintA && !tokenA) errors.push("You don't own Token A");
+    if (tokenA && offeredAmount > tokenA.amount) errors.push(`Insufficient balance: ${tokenA.amount} available`);
+    if (form.tokenMintA === form.tokenMintB) errors.push("Tokens must be different");
 
-    // Check if user has enough balance
-    if (tokenA && offeredAmount > tokenA.amount) {
-      errors.push(`INSUFFICIENT BALANCE: ${tokenA.amount} AVAILABLE`);
-    }
-
-    // Check if tokens are different
-    if (form.tokenMintA === form.tokenMintB) {
-      errors.push("TOKENS MUST BE DIFFERENT");
-    }
-
-    // Validate expiry date
     if (form.expiryDate) {
       const expiryTime = new Date(form.expiryDate).getTime();
-      const currentTime = Date.now();
-      const oneHourFromNow = currentTime + (60 * 60 * 1000); // 1 hour in milliseconds
-
-      if (isNaN(expiryTime)) {
-        errors.push("INVALID EXPIRY DATE");
-      } else if (expiryTime < oneHourFromNow) {
-        errors.push("EXPIRY MUST BE AT LEAST 1 HOUR FROM NOW");
-      }
+      const oneHourFromNow = Date.now() + 60 * 60 * 1000;
+      if (isNaN(expiryTime)) errors.push("Invalid expiry date");
+      else if (expiryTime < oneHourFromNow) errors.push("Expiry must be at least 1 hour from now");
     }
 
-    // Validate public keys
     try {
       if (form.tokenMintA) new PublicKey(form.tokenMintA);
       if (form.tokenMintB) new PublicKey(form.tokenMintB);
     } catch {
-      errors.push("INVALID TOKEN ADDRESS");
+      errors.push("Invalid token address");
     }
 
     setValidationErrors(errors);
@@ -162,24 +188,23 @@ export default function MakeOfferPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
-    setValidationErrors([]); // Clear errors on change
+    setValidationErrors([]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
-      setStatus("❌ VALIDATION FAILED");
+      setStatus("Validation failed");
       setStatusType("error");
       return;
     }
 
     setLoading(true);
     try {
-      setStatus("🔄 CREATING OFFER...");
+      setStatus("Creating offer...");
       setStatusType("info");
 
-      // Convert expiry date to Unix timestamp (seconds)
       const expiryTimestamp = Math.floor(new Date(form.expiryDate).getTime() / 1000);
 
       const signature = await makeOffer(
@@ -191,12 +216,9 @@ export default function MakeOfferPage() {
         expiryTimestamp
       );
 
-      setStatus(`✅ OFFER CREATED SUCCESSFULLY!
-TX: ${signature}
-OFFER ID: ${form.id}`);
+      setStatus(`Offer created successfully!\nTX: ${signature}\nOFFER ID: ${form.id}`);
       setStatusType("success");
 
-      // Reset form
       setForm({
         id: "",
         tokenMintA: "",
@@ -206,51 +228,39 @@ OFFER ID: ${form.id}`);
         expiryDate: "",
       });
 
-      // Refresh user tokens
       fetchUserTokens();
-
     } catch (err: any) {
       console.error("Error creating offer:", err);
-      setStatus(`❌ ERROR: ${err.message || "UNKNOWN ERROR"}`);
+      setStatus(err.message || "Unknown error");
       setStatusType("error");
     } finally {
       setLoading(false);
     }
   };
 
-  const selectedTokenA = userTokens.find(t => t.mint === form.tokenMintA);
+  const selectedTokenA = userTokens.find((t) => t.mint === form.tokenMintA);
 
   return (
-    <div className="pixel-container py-8">
-      <div className="text-center mb-8">
-        <h1 className="pixel-title text-cyan-400 mb-4">MAKE OFFER</h1>
-        <p className="pixel-text text-gray-300 mb-6">
-          CREATE A TOKEN SWAP OFFER
-        </p>
+    <div className="max-w-6xl mx-auto px-6 py-12">
+      <div className="text-center mb-10">
+        <h1 className="text-3xl md:text-4xl font-semibold text-white">Make Offer</h1>
+        <p className="text-sm text-zinc-400 mt-2">Create a token swap offer</p>
       </div>
 
       {!connected ? (
-        <div className="pixel-card bg-red-900 border-red-400 text-center max-w-md mx-auto">
-          <h2 className="pixel-subtitle text-red-400 mb-4">WALLET NOT CONNECTED</h2>
-          <p className="pixel-text text-red-200">
-            CONNECT YOUR WALLET TO CREATE OFFERS
-          </p>
+        <div className="rounded-xl border border-rose-700/40 bg-rose-900/20 p-6 text-center max-w-md mx-auto">
+          <h2 className="text-rose-300 font-medium mb-2">Wallet not connected</h2>
+          <p className="text-sm text-rose-200/80">Connect your wallet to create offers</p>
         </div>
       ) : (
-        <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Form */}
+        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            <div className="pixel-card bg-purple-900 border-purple-400 mb-6">
-              <h2 className="pixel-subtitle text-purple-400 mb-6 text-center">
-                OFFER DETAILS
-              </h2>
+            <div className="rounded-xl border border-[var(--border)] bg-[#111213] p-6 mb-6">
+              <h2 className="text-lg font-medium text-white mb-6 text-center">Offer Details</h2>
 
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Offer ID */}
                 <div>
-                  <label className="block pixel-text text-purple-200 mb-2">
-                    OFFER ID:
-                  </label>
+                  <label className="block text-xs text-zinc-400 mb-2">Offer ID</label>
                   <input
                     type="number"
                     name="id"
@@ -258,45 +268,36 @@ OFFER ID: ${form.id}`);
                     onChange={handleChange}
                     placeholder="1"
                     required
-                    className="pixel-input w-full"
-                    min="1"
+                    className="w-full rounded-lg border border-[var(--border)] bg-[#0F0F0F] px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-[#1E90FF]/30 focus:border-[#1E90FF]"
+                    min={1}
                   />
-                  <p className="pixel-text text-xs text-purple-300 mt-1">
-                    UNIQUE IDENTIFIER FOR YOUR OFFER
-                  </p>
                 </div>
 
-                {/* Token A (Offering) */}
                 <div>
-                  <label className="block pixel-text text-purple-200 mb-2">
-                    TOKEN OFFERING (YOU GIVE):
-                  </label>
+                  <label className="block text-xs text-zinc-400 mb-2">Token Offering (you give)</label>
                   <select
                     name="tokenMintA"
                     value={form.tokenMintA}
                     onChange={handleChange}
                     required
-                    className="pixel-input w-full"
+                    className="w-full rounded-lg border border-[var(--border)] bg-[#0F0F0F] px-3 py-2 text-sm text-white focus:outline-none"
                   >
-                    <option value="">SELECT TOKEN TO OFFER</option>
+                    <option value="">Select token to offer</option>
                     {userTokens.map((token) => (
                       <option key={token.mint} value={token.mint}>
-                        {token.symbol} - {token.amount} AVAILABLE
+                        {token.symbol} - {token.amount} available
                       </option>
                     ))}
                   </select>
                   {selectedTokenA && (
-                    <p className="pixel-text text-xs text-green-400 mt-1">
-                      BALANCE: {selectedTokenA.amount} {selectedTokenA.symbol}
+                    <p className="text-xs text-emerald-300 mt-1">
+                      Balance: {selectedTokenA.amount} {selectedTokenA.symbol}
                     </p>
                   )}
                 </div>
 
-                {/* Amount Offering */}
                 <div>
-                  <label className="block pixel-text text-purple-200 mb-2">
-                    AMOUNT OFFERING:
-                  </label>
+                  <label className="block text-xs text-zinc-400 mb-2">Amount Offering</label>
                   <input
                     type="number"
                     name="tokenAOfferedAmount"
@@ -304,23 +305,19 @@ OFFER ID: ${form.id}`);
                     onChange={handleChange}
                     placeholder="100"
                     required
-                    className="pixel-input w-full"
-                    min="0.000001"
-                    step="0.000001"
+                    className="w-full rounded-lg border border-[var(--border)] bg-[#0F0F0F] px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-[#1E90FF]/30 focus:border-[#1E90FF]"
+                    min={0.000001}
+                    step={0.000001}
                     max={selectedTokenA?.amount || undefined}
                   />
                   {selectedTokenA && (
-                    <p className="pixel-text text-xs text-purple-300 mt-1">
-                      MAX: {selectedTokenA.amount} {selectedTokenA.symbol}
-                    </p>
+                    <p className="text-xs text-zinc-400 mt-1">Max: {selectedTokenA.amount} {selectedTokenA.symbol}</p>
                   )}
                 </div>
 
-                {/* Token B (Wanted) */}
+                {/* ✨ UPDATED: Token B input with real-time feedback */}
                 <div>
-                  <label className="block pixel-text text-purple-200 mb-2">
-                    TOKEN WANTED (YOU GET):
-                  </label>
+                  <label className="block text-xs text-zinc-400 mb-2">Token Wanted (you get)</label>
                   <input
                     type="text"
                     name="tokenMintB"
@@ -328,18 +325,23 @@ OFFER ID: ${form.id}`);
                     onChange={handleChange}
                     placeholder="Token mint address..."
                     required
-                    className="pixel-input w-full"
+                    className="w-full rounded-lg border border-[var(--border)] bg-[#0F0F0F] px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-[#1E90FF]/30 focus:border-[#1E90FF]"
                   />
-                  <p className="pixel-text text-xs text-purple-300 mt-1">
-                    ENTER THE MINT ADDRESS OF DESIRED TOKEN
-                  </p>
+                   {isFetchingTokenB ? (
+                    <p className="text-xs text-amber-300 mt-1">Fetching token info...</p>
+                  ) : tokenBInfo ? (
+                    <p className="text-xs text-emerald-300 mt-1">
+                      Token Found: {tokenBInfo.name} ({tokenBInfo.symbol})
+                    </p>
+                  ) : (
+                    <p className="text-xs text-zinc-500 mt-1">
+                      Enter the mint address of desired token.
+                    </p>
+                  )}
                 </div>
 
-                {/* Amount Wanted */}
                 <div>
-                  <label className="block pixel-text text-purple-200 mb-2">
-                    AMOUNT WANTED:
-                  </label>
+                  <label className="block text-xs text-zinc-400 mb-2">Amount Wanted</label>
                   <input
                     type="number"
                     name="tokenBWantedAmount"
@@ -347,131 +349,107 @@ OFFER ID: ${form.id}`);
                     onChange={handleChange}
                     placeholder="50"
                     required
-                    className="pixel-input w-full"
-                    min="0.000001"
-                    step="0.000001"
+                    className="w-full rounded-lg border border-[var(--border)] bg-[#0F0F0F] px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-[#1E90FF]/30 focus:border-[#1E90FF]"
+                    min={0.000001}
+                    step={0.000001}
                   />
                 </div>
 
-                {/* Expiry Date */}
                 <div>
-                  <label className="block pixel-text text-purple-200 mb-2">
-                    EXPIRY DATE & TIME:
-                  </label>
+                  <label className="block text-xs text-zinc-400 mb-2">Expiry Date & Time</label>
                   <input
                     type="datetime-local"
                     name="expiryDate"
                     value={form.expiryDate}
                     onChange={handleChange}
                     required
-                    className="pixel-input w-full"
-                    min={new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)} // 1 hour from now
+                    className="w-full rounded-lg border border-[var(--border)] bg-[#0F0F0F] px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#1E90FF]/30 focus:border-[#1E90FF]"
+                    min={new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)}
                   />
-                  <p className="pixel-text text-xs text-purple-300 mt-1">
-                    OFFER EXPIRES AT THIS DATE/TIME (MINIMUM 1 HOUR FROM NOW)
-                  </p>
+                  <p className="text-xs text-zinc-500 mt-1">Offer expires at this date/time (minimum 1 hour from now)</p>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={loading || validationErrors.length > 0}
-                  className="pixel-btn-primary w-full py-4"
-                >
-                  {loading ? "CREATING OFFER..." : "CREATE OFFER"}
-                </button>
+                <Button type="submit" className="w-full" disabled={loading || validationErrors.length > 0}>
+                  {loading ? "Creating offer..." : "Create offer"}
+                </Button>
               </form>
             </div>
           </div>
 
-          {/* Sidebar */}
           <div className="space-y-6">
-            {/* Validation Errors */}
             {validationErrors.length > 0 && (
-              <div className="pixel-card bg-red-900 border-red-400">
-                <h3 className="pixel-subtitle text-red-400 mb-4">
-                  VALIDATION ERRORS
-                </h3>
-                <ul className="space-y-1">
+              <div className="rounded-xl border border-rose-700/40 bg-rose-900/20 p-4">
+                <h3 className="text-rose-300 font-medium mb-2">Validation errors</h3>
+                <ul className="space-y-1 list-disc list-inside text-sm text-rose-200/90">
                   {validationErrors.map((error, index) => (
-                    <li key={index} className="pixel-text text-red-200 text-xs">
-                      • {error}
-                    </li>
+                    <li key={index}>• {error}</li>
                   ))}
                 </ul>
               </div>
             )}
 
-            {/* Status */}
             {status && (
-              <div className={`pixel-status-${statusType}`}>
-                <p className="pixel-text whitespace-pre-line break-words text-center">
-                  {status}
-                </p>
+              <div
+                className={
+                  statusType === "success"
+                    ? "rounded-xl border border-emerald-700/40 bg-emerald-900/20 p-4 text-emerald-200"
+                    : statusType === "error"
+                    ? "rounded-xl border border-rose-700/40 bg-rose-900/20 p-4 text-rose-200"
+                    : statusType === "warning"
+                    ? "rounded-xl border border-amber-700/40 bg-amber-900/20 p-4 text-amber-200"
+                    : "rounded-xl border border-cyan-700/40 bg-cyan-900/20 p-4 text-cyan-200"
+                }
+              >
+                <pre className="whitespace-pre-wrap break-words text-sm">{status}</pre>
               </div>
             )}
 
-            {/* Your Tokens */}
-            <div className="pixel-card bg-blue-900 border-blue-400">
-              <h3 className="pixel-subtitle text-blue-400 mb-4">
-                YOUR TOKENS
-              </h3>
+            <div className="rounded-xl border border-[var(--border)] bg-[#111213] p-5">
+              <h3 className="text-white font-medium mb-4">Your Tokens</h3>
               {userTokens.length === 0 ? (
-                <p className="pixel-text text-blue-200">
-                  NO TOKENS FOUND
-                </p>
+                <p className="text-sm text-zinc-400">No tokens found</p>
               ) : (
                 <div className="space-y-2">
                   {userTokens.slice(0, 5).map((token) => (
-                    <div key={token.mint} className="flex justify-between items-center">
-                      <span className="pixel-text text-blue-200 text-xs">
-                        {token.symbol}
-                      </span>
-                      <span className="pixel-text text-yellow-400 text-xs">
-                        {token.amount}
-                      </span>
+                    <div key={token.mint} className="flex justify-between items-center text-sm">
+                      <span className="text-zinc-300">{token.symbol}</span>
+                      <span className="text-amber-300">{token.amount}</span>
                     </div>
                   ))}
                   {userTokens.length > 5 && (
-                    <p className="pixel-text text-blue-300 text-xs">
-                      +{userTokens.length - 5} MORE...
-                    </p>
+                    <p className="text-xs text-zinc-500">+{userTokens.length - 5} more…</p>
                   )}
                 </div>
               )}
             </div>
-
-            {/* Trade Info */}
-            <div className="pixel-card bg-yellow-900 border-yellow-400">
-              <h3 className="pixel-subtitle text-yellow-400 mb-4">
-                TRADE INFO
-              </h3>
+            
+            {/* ✨ UPDATED: Trade Info panel now shows the symbol of the wanted token */}
+            <div className="rounded-xl border border-[var(--border)] bg-[#111213] p-5">
+              <h3 className="text-white font-medium mb-4">Trade Info</h3>
               {form.tokenAOfferedAmount && form.tokenBWantedAmount && (
-                <div className="space-y-2">
+                <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="pixel-text text-yellow-200">RATE:</span>
-                    <span className="pixel-text text-white">
+                    <span className="text-zinc-400">Rate</span>
+                    <span className="text-white">
                       {(Number(form.tokenBWantedAmount) / Number(form.tokenAOfferedAmount)).toFixed(4)}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="pixel-text text-yellow-200">GIVING:</span>
-                    <span className="pixel-text text-red-400">
+                    <span className="text-zinc-400">Giving</span>
+                    <span className="text-rose-300">
                       {form.tokenAOfferedAmount} {selectedTokenA?.symbol || "TKN"}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="pixel-text text-yellow-200">GETTING:</span>
-                    <span className="pixel-text text-green-400">
-                      {form.tokenBWantedAmount} TKN
-                    </span>
+                    <span className="text-zinc-400">Getting</span>
+                    <span className="text-emerald-300">{form.tokenBWantedAmount} {tokenBInfo?.symbol || "TKN"}</span>
                   </div>
                   {form.expiryDate && (
-                    <div className="border-t border-yellow-600 pt-2 mt-2">
+                    <div className="border-t border-[var(--border)] pt-2 mt-2 text-xs text-zinc-400">
                       <div className="flex justify-between">
-                        <span className="pixel-text text-yellow-200">EXPIRES:</span>
-                        <span className="pixel-text text-orange-400 text-xs">
-                          {new Date(form.expiryDate).toLocaleDateString()} <br />
-                          {new Date(form.expiryDate).toLocaleTimeString()}
+                        <span>Expires</span>
+                        <span>
+                          {new Date(form.expiryDate).toLocaleDateString()} {new Date(form.expiryDate).toLocaleTimeString()}
                         </span>
                       </div>
                     </div>

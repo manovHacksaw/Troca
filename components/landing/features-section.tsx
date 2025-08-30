@@ -28,7 +28,7 @@ const features = [
 
 export default function FeaturesSection() {
   return (
-    <section className="py-24 bg-gray-50">
+    <section className="py-24 bg-[#0A0A0A]">
       <div className="max-w-6xl mx-auto px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -37,10 +37,10 @@ export default function FeaturesSection() {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+          <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
             Why Choose Troca
           </h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <p className="text-xl text-zinc-400 max-w-2xl mx-auto">
             Built for traders who value security, speed, and simplicity
           </p>
         </motion.div>
@@ -55,17 +55,17 @@ export default function FeaturesSection() {
               viewport={{ once: true }}
               className="group"
             >
-              <div className="bg-white rounded-xl p-6 border border-gray-200 hover:border-[#14F195] transition-all duration-300 hover:shadow-lg h-full">
+              <div className="rounded-xl p-6 border border-[var(--border)] bg-[#111213] hover:border-[#14F195] transition-all duration-300 h-full">
                 <div className="flex items-start space-x-4">
                   <div className="w-12 h-12 bg-[#14F195] rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
                     <feature.icon className="w-6 h-6 text-black" />
                   </div>
                   
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                    <h3 className="text-xl font-bold text-white mb-2">
                       {feature.title}
                     </h3>
-                    <p className="text-gray-600 leading-relaxed">
+                    <p className="text-zinc-400 leading-relaxed">
                       {feature.description}
                     </p>
                   </div>

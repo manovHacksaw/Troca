@@ -24,10 +24,10 @@ export function MultiStepLoader({
   );
 
   return (
-    <div className={`w-full rounded-2xl bg-black/40 border border-white/10 p-4 shadow-[0_0_40px_rgba(99,102,241,0.2)] ${className}`}>
-      <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-white/10">
+    <div className={`w-full rounded-xl bg-[#0F0F0F] border border-[var(--border)] p-4 ${className}`}>
+      <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-[#111213]">
         <motion.div
-          className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-fuchsia-500 to-purple-600"
+          className="h-full rounded-full bg-[var(--primary)]"
           initial={{ width: 0 }}
           animate={{ width: `${progress}%` }}
           transition={{ type: "spring", stiffness: 120, damping: 20 }}
@@ -36,7 +36,7 @@ export function MultiStepLoader({
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         {steps.map((step, idx) => (
-          <div key={idx} className="flex items-center gap-3 rounded-xl bg-white/5 p-3">
+          <div key={idx} className="flex items-center gap-3 rounded-lg bg-[#111213] p-3">
             <StatusDot status={step.status} />
             <div className="flex-1">
               <div className="text-sm font-semibold text-white/90">{step.label}</div>
@@ -54,16 +54,16 @@ export function MultiStepLoader({
 function StatusDot({ status }: { status: StepStatus }) {
   const color =
     status === "complete"
-      ? "from-emerald-400 to-green-600"
+      ? "bg-emerald-400"
       : status === "active"
-      ? "from-cyan-400 to-fuchsia-500"
+      ? "bg-[var(--primary)]"
       : status === "error"
-      ? "from-red-400 to-rose-600"
-      : "from-slate-500 to-slate-700";
+      ? "bg-rose-400"
+      : "bg-slate-600";
 
   return (
     <motion.div
-      className={`relative size-3 rounded-full bg-gradient-to-tr ${color} shadow-[0_0_16px_rgba(34,197,94,0.5)]`}
+      className={`relative size-3 rounded-full ${color}`}
       animate={status === "active" ? { scale: [1, 1.2, 1] } : undefined}
       transition={{ repeat: Infinity, duration: 1.2 }}
       style={{ imageRendering: "pixelated" }}
