@@ -1,14 +1,13 @@
 "use client"
 import { PublicKey } from "@solana/web3.js";
-import idl from "../solana-swap/target/idl/solana_swap.json";
-import {SolanaSwap} from "../solana-swap/target/types/solana_swap";
 import * as anchor from "@coral-xyz/anchor";
 import { useAnchorWallet, useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { useMemo } from "react";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, TOKEN_PROGRAM_ID, getMint, getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
+import { useEffect, useMemo, useState } from "react";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, TOKEN_PROGRAM_ID, getMint } from "@solana/spl-token";
+
+const PROGRAM_ID = new PublicKey("CDnPGAFt6zbNXrYqkJW34BjAvqV2JJBY3UjiLWmQyd1R");
 
 export function useProgram(){
-  const PROGRAM_ID = new PublicKey("CDnPGAFt6zbNXrYqkJW34BjAvqV2JJBY3UjiLWmQyd1R");
     const {connection} = useConnection();
     const {publicKey} = useWallet();
     const wallet = useAnchorWallet();
@@ -24,12 +23,39 @@ export function useProgram(){
     return null;
   }, [connection, wallet]);
 
-    const program = useMemo(() => {
-    if (provider) {
-      return new anchor.Program(idl as SolanaSwap, provider);
-    }
-    
-    return null;
+    const [program, setProgram] = useState<anchor.Program | null>(null);
+
+    useEffect(() => {
+    let isMounted = true;
+
+    const loadProgram = async () => {
+      if (!provider) {
+        setProgram(null);
+        return;
+      }
+
+      try {
+        const fetchedIdl = await anchor.Program.fetchIdl(PROGRAM_ID, provider);
+        if (fetchedIdl && isMounted) {
+          const idlWithAddress = {
+            ...fetchedIdl,
+            address: fetchedIdl.address ?? PROGRAM_ID.toBase58(),
+          };
+          setProgram(new anchor.Program(idlWithAddress, provider));
+        }
+      } catch (error) {
+        console.error("Failed to fetch program IDL:", error);
+        if (isMounted) {
+          setProgram(null);
+        }
+      }
+    };
+
+    loadProgram();
+
+    return () => {
+      isMounted = false;
+    };
   }, [provider]);
 
   // make offer function
@@ -93,13 +119,15 @@ export function useProgram(){
 const takeOffer = async (offerId: number, maker: PublicKey) => {
   if (!program || !publicKey || !wallet) throw new Error("Wallet not connected");
 
+  const offerClient = (program.account as any).offer;
+
   const [offerPda] = PublicKey.findProgramAddressSync(
     [Buffer.from("offer"), maker.toBuffer(), new anchor.BN(offerId).toArrayLike(Buffer, "le", 8)],
     program.programId
   );
 
   // Fetch offer data to get token mints
-  const offerAccount = await program.account.offer.fetch(offerPda);
+  const offerAccount = await offerClient.fetch(offerPda);
 
   // The taker is RECEIVING token A.
   // Use getOrCreate... to ensure their token account exists.
@@ -137,9 +165,9 @@ const takeOffer = async (offerId: number, maker: PublicKey) => {
       tokenMintA: offerAccount.tokenMintA,
       tokenMintB: offerAccount.tokenMintB,
       // Use the .address property from the created/fetched accounts
-      takerTokenAccountA: takerTokenAccountA.address,
-      takerTokenAccountB: takerTokenAccountB, // getAssociatedTokenAddress directly returns a PublicKey
-      makerTokenAccountB: makerTokenAccountB.address,
+      takerTokenAccountA,
+      takerTokenAccountB,
+      makerTokenAccountB,
       offer: offerPda,
       vault,
       systemProgram: anchor.web3.SystemProgram.programId,
@@ -156,12 +184,13 @@ const takeOffer = async (offerId: number, maker: PublicKey) => {
 const fetchOffers = async () => {
   if (!program) throw new Error("Program not initialized");
 
+  const offerClient = (program.account as any).offer;
   try {
-    const offers = await program.account.offer.all();
+    const offers = await offerClient.all();
     console.log("raw offers", offers);
 
     // Process offers and convert amounts to UI format
-    const parsed = await Promise.all(offers.map(async (offer) => {
+    const parsed = await Promise.all(offers.map(async (offer: any) => {
       try {
         // Fetch mint info to get decimals for conversion
         const mintAInfo = await getMint(connection, offer.account.tokenMintA);
